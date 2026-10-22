@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>倒计时</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 3rem;
+      padding: 3rem 1.5rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      color: #a0aec0;
+    }
+
+    .clock {
+      text-align: center;
+    }
+
+    .clock .time {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+      font-size: clamp(2.5rem, 9vw, 5rem);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.05em;
+      color: #ffffff;
+      text-shadow: 0 0 30px rgba(120, 190, 255, 0.6);
+    }
+
+    .clock .date {
+      margin-top: 0.6rem;
+      font-size: 0.95rem;
+      color: #8aa0b8;
+      letter-spacing: 0.15em;
+    }
+
+    .timers {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 3rem;
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    .timer {
+      flex: 1 1 420px;
+      text-align: center;
+    }
+
+    .timer .label {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      color: #ffd166;
+      letter-spacing: 0.1em;
+    }
+
+    .timer .label small {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: #8aa0b8;
+      letter-spacing: 0;
+      margin-top: 0.3rem;
+    }
+
+    .digits {
+      display: flex;
+      justify-content: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 5.5rem;
+    }
+
+    .num {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      font-weight: 700;
+      line-height: 1;
+      color: #e8f1ff;
+      text-shadow: 0 0 25px rgba(100, 170, 255, 0.45);
+    }
+
+    .unit span:last-child {
+      font-size: 0.8rem;
+      color: #7d8fa6;
+      margin-top: 0.5rem;
+      letter-spacing: 0.2em;
+    }
+
+    .done {
+      font-size: 2rem;
+      color: #ffd166;
+      font-weight: 700;
+    }
+
+    .hero {
+      position: relative;
+      width: min(90vw, 520px);
+      margin: 0.5rem 0;
+      border-radius: 18px;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      will-change: transform;
+    }
+
+    .hero img {
+      display: block;
+      width: 100%;
+      height: auto;
+      pointer-events: none;
+    }
+
+    .hero .ice {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+      mix-blend-mode: screen;
+      filter: saturate(0.7) brightness(1.05);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(
+        circle at 30% 20%,
+        rgba(255, 255, 255, 0.35),
+        transparent 45%
+      );
+      opacity: 0.6;
+    }
+
+    .hero.press {
+      animation: squish 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes squish {
+      0%   { transform: scale(1, 1); }
+      30%  { transform: scale(1.12, 0.82); }
+      55%  { transform: scale(0.94, 1.08); }
+      75%  { transform: scale(1.04, 0.97); }
+      100% { transform: scale(1, 1); }
+    }
+
+    #ice-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    footer {
+      font-size: 0.8rem;
+      color: #566a82;
+      text-align: center;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+  <h1>倒计时</h1>
+
+  <div class="clock">
+    <div class="time" id="clock-time">--:--:--</div>
+
+    <div class="date" id="clock-date"></div>
+  </div>
+
+  <div class="timers">
+    <div class="timer">
+      <div class="label">距离元旦<small id="target-newyear"></small></div>
+      <div class="digits" id="countdown-newyear"></div>
+    </div>
+
+    <div class="timer">
+      <div class="label">距离过年<small id="target-spring"></small></div>
+      <div class="digits" id="countdown-spring"></div>
+    </div>
+  </div>
+
+  <div class="hero" id="hero" title="点我一下">
+    <img src="Resouce/LIUDEHUA.png" alt="刘德华" />
+    <div class="ice" id="ice"></div>
+  </div>
+
+  破冰粒子画布
+  <canvas id="ice-canvas"></canvas>
+
+  <footer>
+    时间基准：本机系统时间<br />
+    过年日期以春节（农历正月初一）为准
+  </footer>
+
+  <script>
+    // ===== 春节日期表（农历正月初一）=====
+    const SPRING_FESTIVAL = {
+      2025: "2025-01-29",
+      2026: "2026-02-17",
+      2027: "2027-02-06",
+      2028: "2028-01-26",
+      2029: "2029-02-13",
+      2030: "2030-02-03",
+    };
+
+    //next year
+    function nextNewYear(from) {
+      return new Date(from.getFullYear() + 1, 0, 1, 0, 0, 0);
+    }
+
+    function nextSpringFestival(from) {
+      const y = from.getFullYear();
+      const candidates = [];
+      [y, y + 1].forEach((yr) => {
+        if (SPRING_FESTIVAL[yr]) {
+          const [yy, mm, dd] = SPRING_FESTIVAL[yr].split("-").map(Number);
+          candidates.push(new Date(yy, mm - 1, dd, 0, 0, 0));
+        }
+      });
+      return candidates.find((d) => d.getTime() > from.getTime()) || null;
+    }
+
+    function pad(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    function render(targetId, containerId, target) {
+      const container = document.getElementById(containerId);
+      const targetEl = document.getElementById(targetId);
+
+      if (!target) {
+        targetEl.textContent = "（暂无数据）";
+        container.innerHTML = '<div class="done">日期未知</div>';
+        return;
+      }
+
+      targetEl.textContent =
+        target.getFullYear() + " 年 " + (target.getMonth() + 1) + " 月 " + target.getDate() + " 日";
+
+      const diff = target.getTime() - Date.now();
+
+      if (diff <= 0) {
+        container.innerHTML = '<div class="done">🎉 已到达！</div>';
+        return;
+      }
+
+      const totalSec = Math.floor(diff / 1000);
+      const days = Math.floor(totalSec / 86400);
+      const hours = Math.floor((totalSec % 86400) / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      const secs = totalSec % 60;
+
+      container.innerHTML =
+        '<div class="unit"><div class="num">' + days + '</div><span>天</span></div>' +
+        '<div class="unit"><div class="num">' + pad(hours) + '</div><span>时</span></div>' +
+        '<div class="unit"><div class="num">' + pad(mins) + '</div><span>分</span></div>' +
+        '<div class="unit"><div class="num">' + pad(secs) + '</div><span>秒</span></div>';
+    }
+
+    function updateClock(now) {
+      const hh = pad(now.getHours());
+      const mm = pad(now.getMinutes());
+      const ss = pad(now.getSeconds());
+      document.getElementById("clock-time").textContent = hh + ":" + mm + ":" + ss;
+
+      const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+      const dateStr =
+        now.getFullYear() + " 年 " + (now.getMonth() + 1) + " 月 " + now.getDate() + " 日 星期" +
+        weekdays[now.getDay()];
+      document.getElementById("clock-date").textContent = dateStr;
+    }
+
+    (function initHero() {
+      const hero = document.getElementById("hero");
+      const ice = document.getElementById("ice");
+
+      ice.style.backgroundImage = "url('Resouce/ICE.png')";
+
+      const AUDIOS = [
+        "Resouce/oyiyeyioyiyeoo.mp3",
+        "Resouce/oyiyeyiyeyiyeoo.mp3",
+        "Resouce/我恭喜你发财.mp3",
+        "Resouce/我恭喜你精彩.mp3",
+      ];
+      let lastIndex = -1;
+
+      hero.addEventListener("click", () => {
+        hero.classList.remove("press");
+        void hero.offsetWidth;
+        hero.classList.add("press");
+
+        let i;
+        do {
+          i = Math.floor(Math.random() * AUDIOS.length);
+        } while (AUDIOS.length > 1 && i === lastIndex);
+        lastIndex = i;
+
+        const audio = new Audio(AUDIOS[i]);
+        audio.play().catch(() => {});
+      });
+
+      hero.addEventListener("animationend", () => hero.classList.remove("press"));
+    })();
+
+    function updateIceOpacity(now) {
+      const ny = nextNewYear(now).getTime();
+      const sf = nextSpringFestival(now);
+      const iceEl = document.getElementById("ice");
+      if (!iceEl) return;
+
+      const ICE_START = 0.25;
+      const ICE_END = 0.04;
+
+      if (!sf) {
+        iceEl.style.opacity = ICE_START;
+        return;
+      }
+
+      const start = now.getTime();
+      const total = sf.getTime() - ny;
+      let ratio = total > 0 ? (start - ny) / total : 1;
+      ratio = Math.min(Math.max(ratio, 0), 1);
+
+      const opacity = ICE_START + (ICE_END - ICE_START) * ratio;
+      iceEl.style.opacity = opacity.toFixed(3);
+    }
+
+    const canvas = document.getElementById("ice-canvas");
+    const ctx = canvas.getContext("2d");
+    let particles = [];
+    let rafId = null;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    function burstIce(cx, cy) {
+      const originX = cx ?? canvas.width / 2;
+      const originY = cy ?? canvas.height / 2;
+      const count = 160;
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 9;
+        particles.push({
+          x: originX + (Math.random() - 0.5) * 40,
+          y: originY + (Math.random() - 0.5) * 40,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 3,
+          size: 3 + Math.random() * 9,
+          rot: Math.random() * Math.PI,
+          vrot: (Math.random() - 0.5) * 0.4,
+          life: 1,
+          decay: 0.008 + Math.random() * 0.012,
+          hue: 190 + Math.random() * 30,
+        });
+      }
+      if (!rafId) rafId = requestAnimationFrame(animateParticles);
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.vy += 0.18;       // 重力
+        p.vx *= 0.99;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vrot;
+        p.life -= p.decay;
+
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = Math.max(p.life, 0);
+        ctx.fillStyle = "hsla(" + p.hue + ", 90%, 75%, 0.9)";
+        ctx.beginPath();
+        ctx.moveTo(0, -p.size);
+        ctx.lineTo(p.size * 0.7, 0);
+        ctx.lineTo(0, p.size);
+        ctx.lineTo(-p.size * 0.7, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.8)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (particles.length > 0) {
+        rafId = requestAnimationFrame(animateParticles);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        rafId = null;
+      }
+    }
+
+    let lastNewYearHit = false;
+    function checkNewYearCross(now) {
+      const y = now.getFullYear();
+      const isNewYearMoment =
+        now.getMonth() === 0 && now.getDate() === 1 && now.getHours() === 0 &&
+        now.getMinutes() === 0 && now.getSeconds() <= 2;
+
+      if (isNewYearMoment && !lastNewYearHit) {
+        lastNewYearHit = true;
+        const hero = document.getElementById("hero");
+        if (hero) {
+          const r = hero.getBoundingClientRect();
+          burstIce(r.left + r.width / 2, r.top + r.height / 2);
+        } else {
+          burstIce();
+        }
+      }
+      if (!(now.getMonth() === 0 && now.getDate() === 1)) {
+        lastNewYearHit = false;
+      }
+    }
+
+    function tick() {
+      const now = new Date();
+      updateClock(now);
+      updateIceOpacity(now);
+      checkNewYearCross(now);
+      render("target-newyear", "countdown-newyear", nextNewYear(now));
+      render("target-spring", "countdown-spring", nextSpringFestival(now));
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
