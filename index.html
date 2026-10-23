@@ -321,6 +321,10 @@
       hero.addEventListener("click", () => {
         hero.classList.remove("press");
         void hero.offsetWidth;
+        burstIce(
+          (() => { const r = hero.getBoundingClientRect(); return r.left + r.width / 2; })(),
+          (() => { const r = hero.getBoundingClientRect(); return r.top + r.height / 2; })()
+        );
         hero.classList.add("press");
 
         let i;
